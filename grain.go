@@ -24,9 +24,10 @@ import (
     "strconv"
     "strings"
     "math/bits"
-    "crypto/subtle"
     "crypto/cipher"
     "encoding/binary"
+
+    "github.com/pedroalbanese/go-grain/internal/subtle"
 )
 
 var errOpen = errors.New("cryptobin/grain: message authentication failed")
@@ -77,6 +78,9 @@ func (s *stream) XORKeyStream(dst, src []byte) {
     }
     if len(dst) < len(src) {
         panic("cryptobin/grain: output smaller than input")
+    }
+    if subtle.InexactOverlap(dst[:len(src)], src) {
+        panic("cryptobin/grain: invalid buffer overlap")
     }
 
     dst = dst[:len(src)]
@@ -209,6 +213,11 @@ func (s *state) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
     }
     s.init(nonce)
 
+    ret, out := subtle.SliceForAppend(dst, len(plaintext)+TagSize)
+    if subtle.InexactOverlap(out, plaintext) {
+        panic("cryptobin/grain: invalid buffer overlap")
+    }
+
     s.encrypt(out[:len(out)-TagSize], plaintext, additionalData)
 
     s.tag(out[len(out)-TagSize:])
@@ -228,6 +237,11 @@ func (s *state) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, err
 
     tag := ciphertext[len(ciphertext)-TagSize:]
     ciphertext = ciphertext[:len(ciphertext)-TagSize]
+
+    ret, out := subtle.SliceForAppend(dst, len(ciphertext))
+    if subtle.InexactOverlap(out, ciphertext) {
+        panic("cryptobin/grain: invalid buffer overlap")
+    }
 
     s.decrypt(out, ciphertext, additionalData)
 

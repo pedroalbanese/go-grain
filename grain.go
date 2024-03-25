@@ -30,7 +30,7 @@ import (
     "github.com/pedroalbanese/go-grain/internal/subtle"
 )
 
-var errOpen = errors.New("cryptobin/grain: message authentication failed")
+var errOpen = errors.New("grain: message authentication failed")
 
 const (
     // BlockSize is the size in bytes of an Grain128-AEAD block.
@@ -50,7 +50,7 @@ const (
 // key, nonce pair.
 func NewUnauthenticated(key, nonce []byte) (cipher.Stream, error) {
     if len(key) != KeySize {
-        return nil, errors.New("cryptobin/grain: bad key length")
+        return nil, errors.New("grain: bad key length")
     }
 
     var s stream
@@ -77,10 +77,10 @@ func (s *stream) XORKeyStream(dst, src []byte) {
         return
     }
     if len(dst) < len(src) {
-        panic("cryptobin/grain: output smaller than input")
+        panic("grain: output smaller than input")
     }
     if subtle.InexactOverlap(dst[:len(src)], src) {
-        panic("cryptobin/grain: invalid buffer overlap")
+        panic("grain: invalid buffer overlap")
     }
 
     dst = dst[:len(src)]
@@ -192,7 +192,7 @@ var _ cipher.AEAD = (*state)(nil)
 // per key, nonce pair, including additional authenticated data.
 func New(key []byte) (cipher.AEAD, error) {
     if len(key) != KeySize {
-        return nil, errors.New("cryptobin/grain: bad key length")
+        return nil, errors.New("grain: bad key length")
     }
     var s state
     s.setKey(key)
@@ -209,13 +209,13 @@ func (s *state) Overhead() int {
 
 func (s *state) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
     if len(nonce) != NonceSize {
-        panic("cryptobin/grain: incorrect nonce length: " + strconv.Itoa(len(nonce)))
+        panic("grain: incorrect nonce length: " + strconv.Itoa(len(nonce)))
     }
     s.init(nonce)
 
     ret, out := subtle.SliceForAppend(dst, len(plaintext)+TagSize)
     if subtle.InexactOverlap(out, plaintext) {
-        panic("cryptobin/grain: invalid buffer overlap")
+        panic("grain: invalid buffer overlap")
     }
 
     s.encrypt(out[:len(out)-TagSize], plaintext, additionalData)
@@ -227,7 +227,7 @@ func (s *state) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
 
 func (s *state) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
     if len(nonce) != NonceSize {
-        panic("cryptobin/grain: incorrect nonce length: " + strconv.Itoa(len(nonce)))
+        panic("grain: incorrect nonce length: " + strconv.Itoa(len(nonce)))
     }
     if len(ciphertext) < TagSize {
         return nil, errOpen
@@ -240,7 +240,7 @@ func (s *state) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, err
 
     ret, out := subtle.SliceForAppend(dst, len(ciphertext))
     if subtle.InexactOverlap(out, ciphertext) {
-        panic("cryptobin/grain: invalid buffer overlap")
+        panic("grain: invalid buffer overlap")
     }
 
     s.decrypt(out, ciphertext, additionalData)
